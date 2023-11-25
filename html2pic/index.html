@@ -170,6 +170,7 @@
             scale: 3, // image pixel ratio，The larger the value, the clearer the image.
             autoExportImageAfterUploading: true,
             padding: '50px', // padding the created image
+            docxWidth: '1012px',
         };
     </script>
 
@@ -218,6 +219,7 @@
 
         window.onload = () => {
             htmlPreviewer.style.padding = userConfigs.padding;
+            htmlPreviewer.style.minWidth = userConfigs.docxWidth;
         };
     </script>
 
