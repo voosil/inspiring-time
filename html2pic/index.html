@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>HTML2Canvas</title>
+    </head>
+
+    <style>
+        body {
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+            background-color: #6c63ff;
+        }
+
+        #upload {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            height: 50%;
+        }
+        #drop-target {
+            display: flex;
+            width: 70%;
+            height: 100%;
+            box-sizing: border-box;
+            min-height: 100px;
+            min-width: 150px;
+            background-color: #6c63ff;
+            box-shadow: 0 0 30px #443eb7;
+            border-radius: 20px;
+            color: #fff;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #drop-target:hover {
+            box-shadow: 0 0 50px #373291;
+        }
+        .drag-enter {
+            filter: brightness(0.75);
+        }
+        #operations {
+            position: fixed;
+            right: 20px;
+            z-index: 99;
+        }
+        #close-float-window {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            display: none;
+            cursor: pointer;
+        }
+        #close-float-window svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        #info-container {
+            display: flex;
+            width: 100%;
+            position: fixed;
+            justify-content: center;
+            top: -50px;
+            transition: top 0.5s ease;
+            z-index: 98;
+        }
+        #error-info {
+            width: max-content;
+            min-width: 100px;
+            font-size: 1.1em;
+            font-weight: bold;
+            padding: 10px 20px;
+            border-radius: 8px;
+            background-color: aquamarine;
+            border: 1px dotted #000;
+            box-shadow: 5px 1px 2px #aaa;
+            text-align: center;
+            z-index: 99;
+        }
+        #mask {
+            position: fixed;
+            height: 100%;
+            width: 100%;
+            left: 0;
+            top: 0;
+            background-color: #fefefe;
+            display: none;
+            z-index: 1;
+        }
+        #html-preview {
+            position: fixed;
+            width: min-content;
+            left: -100vw;
+            background-color: #fefefe;
+            transition: height 0.5s ease;
+            z-index: 2;
+        }
+        #canvas {
+            overflow-y: auto;
+            position: fixed;
+            height: 0vh;
+            z-index: 3;
+        }
+        .show-canvas-previewer {
+            height: 85vh !important;
+            background-color: #fff !important;
+            box-shadow: 10px 5px 5px #aaa !important;
+        }
+        .show-mask {
+            display: block !important;
+        }
+
+        b {
+            font-weight: bold;
+            font-size: 3em;
+        }
+    </style>
+
+    <body>
+        <div id="mask"></div>
+        <div id="upload">
+            <div id="drop-target">
+                <span id="file-name"
+                    ><b>Drag</b> Single File or <b>Click</b> here to <span style="font-weight: bold">Create Image</span></span
+                >
+            </div>
+        </div>
+        <div id="html-preview"></div>
+        <div id="canvas"></div>
+        <div id="info-container">
+            <div id="error-info"></div>
+        </div>
+        <div id="operations">
+            <div id="close-float-window" class="operation-items">
+                <svg
+                    t="1700621812069"
+                    class="icon"
+                    viewBox="0 0 1024 1024"
+                    version="1.1"
+                    xmlns="http://www.w3.org/2000/svg"
+                    p-id="1451"
+                    width="200"
+                    height="200"
+                >
+                    <path
+                        d="M983.8 312.7C958 251.8 921.1 197 874.1 150c-47-47.1-101.7-84-162.7-109.8C648.3 13.5 581.2 0 512 0S375.8 13.5 312.7 40.2C251.7 66 197.1 103 150 150S66 251.7 40.2 312.7C13.5 375.8 0 442.9 0 512s13.5 136.2 40.3 199.3C66.1 772.2 103 827 150 874c47 47.1 101.7 84 162.7 109.8 63.1 26.7 130.2 40.2 199.3 40.2s136.2-13.5 199.3-40.3c61-25.8 115.8-62.7 162.8-109.7 47.1-47 84-101.7 109.7-162.7 26.7-63.1 40.2-130.2 40.2-199.3s-13.5-136.2-40.2-199.3z m-26.9 387.2c-24.3 57.5-59.2 109.2-103.5 153.5-44.4 44.4-96 79.2-153.5 103.5-59.5 25.1-122.7 37.9-187.9 37.9-65.1 0-128.4-12.7-187.9-37.9-57.5-24.3-109.2-59.2-153.5-103.5-44.5-44.4-79.3-96-103.6-153.5C41.9 640.4 29.1 577.2 29.1 512s12.8-128.4 38-188c24.3-57.5 59.1-109.1 103.5-153.5 44.4-44.4 96-79.2 153.5-103.5C383.6 41.9 446.8 29.1 512 29.1s128.4 12.8 187.8 38c57.5 24.3 109.2 59.2 153.5 103.5 44.4 44.4 79.2 96 103.5 153.5 25.1 59.5 37.9 122.7 37.9 187.9 0.1 65.1-12.6 128.4-37.8 187.9z"
+                        fill="#2c2c2c"
+                    ></path>
+                    <path
+                        d="M732 322c0-7.7-2.9-15.4-8.8-21.2-11.7-11.7-30.8-11.7-42.5 0L512 469.5 343.3 300.8c-11.7-11.7-30.8-11.7-42.5 0-5.9 5.9-8.8 13.5-8.8 21.2s2.9 15.4 8.8 21.2L469.5 512 300.8 680.7c-5.9 5.9-8.8 13.5-8.8 21.2s2.9 15.4 8.8 21.2c5.9 5.9 13.5 8.8 21.2 8.8s15.4-2.9 21.2-8.8L512 554.5l168.7 168.7c5.9 5.9 13.5 8.8 21.2 8.8s15.4-2.9 21.2-8.8c5.9-5.9 8.8-13.5 8.8-21.2s-2.9-15.4-8.8-21.2L554.5 512l168.7-168.7c5.9-5.9 8.8-13.6 8.8-21.3z"
+                        fill="#2c2c2c"
+                    ></path>
+                </svg>
+            </div>
+        </div>
+    </body>
+
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script>
+        /** user settings */
+        const userConfigs = {
+            scale: 3, // image pixel ratio，The larger the value, the clearer the image.
+            autoExportImageAfterUploading: true,
+            padding: '50px', // padding the created image
+        };
+    </script>
+
+    <script>
+        // elements
+
+        //info
+        const infoContainer = document.querySelector('#info-container');
+
+        const infoEl = document.querySelector('#error-info');
+
+        //close float window
+        const closeEl = document.querySelector('#close-float-window');
+
+        // canvas container
+        const canvasContainer = document.querySelector('#canvas');
+
+        // uploader
+        const fileUploader = document.querySelector('#drop-target');
+
+        // html previewer
+        const htmlPreviewer = document.querySelector('#html-preview');
+
+        // mask
+        const mask = document.querySelector('#mask');
+    </script>
+
+    <script>
+        /** user settings init */
+        const converterConfig = {
+            scale: userConfigs.scale,
+        };
+
+        const filePickerConfig = {
+            id: 'html2pic',
+            startIn: 'desktop',
+            types: [
+                {
+                    description: 'Document',
+                    accept: {
+                        'html/*': ['.html', '.htm', '.mhtml'],
+                    },
+                },
+            ],
+        };
+
+        window.onload = () => {
+            htmlPreviewer.style.padding = userConfigs.padding;
+        };
+    </script>
+
+    <script>
+        /** --------  info  ----------*/
+        const INFO_TYPE = {
+            ERR: 'red',
+            WARN: 'yellow',
+            SUCCESS: 'green',
+        };
+
+        function showInfo(info, type = INFO_TYPE.ERR) {
+            type === INFO_TYPE.ERR && console.error(info);
+
+            infoEl.innerText = info;
+            infoContainer.style.color = type;
+            infoContainer.style.top = '48px';
+
+            setTimeout(() => {
+                infoContainer.style.top = '-50px';
+            }, 5000);
+        }
+
+        function showCanvasPreviewers() {
+            canvasContainer.classList.add('show-canvas-previewer');
+            mask.classList.add('show-mask');
+            closeEl.style.display = 'block';
+        }
+
+        function closeCanvasPreviewers() {
+            location.reload();
+        }
+
+        closeEl.addEventListener('click', closeCanvasPreviewers);
+
+        /**----------- file upload & DOM inject -------------- */
+        function uploadInit() {
+            function readFileAndUpdateDOM(uploadFile) {
+                const fileReader = new FileReader();
+
+                fileReader.readAsText(uploadFile, 'gbk');
+
+                fileReader.onprogress = () => showInfo('Reading File...', INFO_TYPE.WARN);
+
+                fileReader.onload = () => {
+                    const html = fileReader.result;
+                    htmlPreviewer.innerHTML = html;
+                };
+
+                fileReader.onerror = showInfo;
+            }
+
+            /** click to upload */
+            fileUploader.addEventListener('click', () => {
+                showOpenFilePicker(filePickerConfig).then(
+                    ([fileHandle]) => {
+                        fileHandle.getFile().then(readFileAndUpdateDOM, showInfo);
+                    },
+                    (error) => {
+                        if (error.toString() === 'AbortError: The user aborted a request.') {
+                            showInfo('Upload Cancelled', INFO_TYPE.WARN);
+                        }
+                    }
+                );
+            });
+
+            /** drag to upload */
+            function setUploadDragStyle() {
+                fileUploader.classList.add('drag-enter');
+            }
+
+            function resetUploadDragStyle() {
+                fileUploader.classList.remove('drag-enter');
+            }
+
+            function onDragUpload(event) {
+                event.preventDefault();
+
+                switch (event.type) {
+                    case 'drop': {
+                        const [file] = event.dataTransfer.files;
+                        readFileAndUpdateDOM(file);
+                        resetUploadDragStyle();
+                        break;
+                    }
+                    case 'dragover': {
+                        setUploadDragStyle();
+                        break;
+                    }
+                    case 'dragleave': {
+                        resetUploadDragStyle();
+                        break;
+                    }
+                    default:
+                        resetUploadDragStyle();
+                }
+            }
+            fileUploader.addEventListener('dragover', onDragUpload);
+            fileUploader.addEventListener('dragleave', onDragUpload);
+            fileUploader.addEventListener('drop', onDragUpload);
+        }
+
+        function convert() {
+            /** -------- convert to image ---------- **/
+
+            function writeToClipboard(targetCanvas) {
+                targetCanvas.toBlob((blob) => {
+                    const data = [
+                        new ClipboardItem({
+                            [blob.type]: blob,
+                        }),
+                    ];
+
+                    navigator.clipboard.write(data).then(() => {
+                        showInfo('Image has been created and copied to Clipboard', INFO_TYPE.SUCCESS);
+                    });
+                });
+            }
+
+            function createCanvas() {
+                showInfo('creating image...', INFO_TYPE.WARN);
+                showCanvasPreviewers();
+
+                return html2canvas(htmlPreviewer, {
+                    ...converterConfig,
+                    // scrollX: 0,
+                    // scrollY: htmlPreviewer.scrollHeight,
+                    width: htmlPreviewer.scrollWidth,
+                    height: htmlPreviewer.scrollHeight,
+                    useCORS: true,
+                }).then(
+                    (canvas) => {
+                        canvasContainer.appendChild(canvas);
+                        writeToClipboard(canvas);
+                    },
+                    (error) => {
+                        showInfo('converter error:' + error);
+                    }
+                );
+            }
+
+            /** create image immediately after uploading */
+            function automaticGenerator() {
+                const createImage = (_, observer) => {
+                    createCanvas().finally(() => {
+                        observer.disconnect();
+                    });
+                };
+
+                const observerConfig = { childList: true, subtree: true };
+                const mutationObserver = new MutationObserver(createImage);
+                mutationObserver.observe(htmlPreviewer, observerConfig);
+            }
+
+            // default close
+            userConfigs.autoExportImageAfterUploading && automaticGenerator();
+        }
+    </script>
+
+    <script>
+        uploadInit();
+        convert();
+    </script>
+</html>
